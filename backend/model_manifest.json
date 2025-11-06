@@ -1,0 +1,27 @@
+{
+  "primary_model": {
+    "path": "modic_model.tflite",
+    "exists": true,
+    "size_mb": 24.92,
+    "format": "tflite",
+    "input_shape": "[[1, 224, 224, 3], [1, 224, 224, 3]]",
+    "output_shape": "[1, 2]",
+    "input_count": 2,
+    "architecture": "dual_input_cnn"
+  },
+  "global_tflite": {
+    "path": "global_model.tflite",
+    "exists": true,
+    "size_mb": 49.01
+  },
+  "client_tflite": {
+    "path": "app\\src\\main\\assets\\modic_model.tflite",
+    "exists": true,
+    "size_mb": 49.01
+  },
+  "migration_notes": {
+    "previous_keras_model": "final_model.keras (196.98 MB) - removed for size optimization",
+    "current_architecture": "full_tflite",
+    "benefits": "Reduced memory footprint, faster inference, mobile-optimized"
+  }
+}

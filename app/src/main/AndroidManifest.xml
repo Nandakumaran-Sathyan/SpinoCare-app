@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions for accessing images -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    
+    <!-- Network permissions for model updates and server communication -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".ModicareApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.SpinoCare"
+        tools:replace="android:theme">
+        
+        <!-- Disable default WorkManager initialization since we provide custom configuration -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+        
+        <!-- Login Activity (Secure - No Demo Mode) -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true"
+            android:label="SpinoCare"
+            android:theme="@style/Theme.SpinoCare">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Signup Activity -->
+        <activity
+            android:name=".SignupActivity"
+            android:exported="false"
+            android:label="Sign Up"
+            android:theme="@style/Theme.SpinoCare" />
+        
+        <!-- Main Activity -->
+        <activity
+            android:name=".SimpleMainActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.SpinoCare" />
+            
+        <!-- Settings Activity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="Settings"
+            android:theme="@style/Theme.SpinoCare" />
+            
+        <!-- Profile Activity -->
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:label="Profile"
+            android:theme="@style/Theme.SpinoCare" />
+            
+        <!-- Help & Support Activity -->
+        <activity
+            android:name=".HelpSupportActivity"
+            android:exported="false"
+            android:label="Help &amp; Support"
+            android:theme="@style/Theme.SpinoCare" />
+            
+        <!-- Privacy Policy Activity -->
+        <activity
+            android:name=".PrivacyPolicyActivity"
+            android:exported="false"
+            android:label="Privacy Policy"
+            android:theme="@style/Theme.SpinoCare" />
+            
+        <!-- Model Settings Activity -->
+        <activity
+            android:name=".ModelSettingsActivity"
+            android:exported="false"
+            android:label="Model Settings"
+            android:theme="@style/Theme.SpinoCare" />
+            
+        <!-- UCrop Activity for Image Cropping -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.SpinoCare.UCrop"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize" />
+            
+    </application>
+
+</manifest>

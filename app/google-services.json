@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "671970847651",
+    "project_id": "modic-d0149",
+    "storage_bucket": "modic-d0149.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:671970847651:android:414120098c1744f2b10816",
+        "android_client_info": {
+          "package_name": "com.example.modicanlyzer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "671970847651-iem5she1pi52bhhkga0ofbu29e791ae0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-YC9j0hzbEYxPWMbgtSe0xtYia5QAYew"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "671970847651-iem5she1pi52bhhkga0ofbu29e791ae0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
