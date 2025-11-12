@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.modicanalyzer.viewmodel.UserProfileViewModel
+import com.example.modicanalyzer.data.repository.MySQLAuthRepository
 
 @Composable
 fun ProfileScreen(
@@ -30,15 +31,29 @@ fun ProfileScreen(
     onModelSettingsClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
-    userProfileViewModel: UserProfileViewModel = hiltViewModel()
+    userProfileViewModel: UserProfileViewModel = hiltViewModel(),
+    authRepository: MySQLAuthRepository? = null
 ) {
     val context = LocalContext.current
-    val authManager = AuthManager(context)
     
-    // Get user information from Firestore via UserProfileViewModel
-    val userName = userProfileViewModel.getUserName().takeIf { it.isNotBlank() } ?: "Guest User"
-    val userRole = userProfileViewModel.getUserRole().takeIf { it.isNotBlank() } ?: "Patient"
-    val userEmail = userProfileViewModel.getUserEmail().takeIf { it.isNotBlank() } ?: "No email available"
+    // Get user information from MySQL auth repository or fallback to UserProfileViewModel
+    val userName = if (authRepository != null) {
+        authRepository.getCurrentUserDisplayName() ?: userProfileViewModel.getUserName()
+    } else {
+        userProfileViewModel.getUserName()
+    }.let { if (it.isNotBlank()) it else "Guest User" }
+    
+    val userRole = userProfileViewModel.getUserRole().let { 
+        if (it.isNotBlank()) it else "Patient" 
+    }
+    
+    val userEmail = if (authRepository != null) {
+        authRepository.getCurrentUserEmail() ?: userProfileViewModel.getUserEmail()
+    } else {
+        userProfileViewModel.getUserEmail()
+    }.let { if (it.isNotBlank()) it else "No email available" }
+    
+    val isLoggedIn = authRepository?.isLoggedIn() ?: false
     
     LazyColumn(
         modifier = Modifier
@@ -123,23 +138,18 @@ fun ProfileScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                if (authManager.isFirebaseAuthenticated()) Icons.Default.CheckCircle 
-                                else if (authManager.isLoggedIn()) Icons.Default.AccountBox
-                                else Icons.Default.AccountCircle,
+                                Icons.Filled.CheckCircle,
                                 contentDescription = null,
-                                tint = if (authManager.isFirebaseAuthenticated()) Color(0xFF4CAF50) 
-                                       else if (authManager.isLoggedIn()) Color(0xFF2196F3)
+                                tint = if (isLoggedIn) Color(0xFF4CAF50) 
                                        else com.example.modicanalyzer.ui.theme.ModicareAccent,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                if (authManager.isFirebaseAuthenticated()) "Firebase Account" 
-                                else if (authManager.isLoggedIn()) "Local Account" 
-                                else "Demo Account",
+                                if (isLoggedIn) "MySQL Account" 
+                                else "Guest",
                                 fontSize = 12.sp,
-                                color = if (authManager.isFirebaseAuthenticated()) Color(0xFF4CAF50) 
-                                       else if (authManager.isLoggedIn()) Color(0xFF2196F3)
+                                color = if (isLoggedIn) Color(0xFF4CAF50) 
                                        else com.example.modicanalyzer.ui.theme.ModicareAccent
                             )
                         }

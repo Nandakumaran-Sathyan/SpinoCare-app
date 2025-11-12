@@ -40,8 +40,13 @@ if ($method === 'OPTIONS') {
 }
 
 try {
+    // Authentication endpoints
+    if (isset($segments[0]) && $segments[0] === 'auth') {
+        require_once 'auth.php';
+        handleAuthRequest($method, $segments);
+    }
     // User endpoints
-    if (isset($segments[0]) && $segments[0] === 'users') {
+    else if (isset($segments[0]) && $segments[0] === 'users') {
         require_once 'users.php';
         handleUserRequest($method, $segments);
     }
@@ -54,14 +59,16 @@ try {
     else if ($method === 'GET' && (empty($path) || $path === 'index.php')) {
         sendResponse(true, [
             'message' => 'SpinoCare API is running',
-            'version' => '1.0',
+            'version' => '2.0',
             'endpoints' => [
-                'POST /spinocare-api/users/register',
-                'GET /spinocare-api/users/{firebase_uid}',
-                'POST /spinocare-api/analysis/save',
-                'GET /spinocare-api/analysis/list/{firebase_uid}',
-                'GET /spinocare-api/analysis/{entry_id}',
-                'DELETE /spinocare-api/analysis/{entry_id}'
+                'POST /spinocare-api/auth/register - Register new user with password',
+                'POST /spinocare-api/auth/login - Login with email and password',
+                'POST /spinocare-api/users/register - Legacy: Register user (no password)',
+                'GET /spinocare-api/users/{uid} - Get user details',
+                'POST /spinocare-api/analysis/save - Save MRI analysis',
+                'GET /spinocare-api/analysis/list/{uid} - Get user\'s analyses',
+                'GET /spinocare-api/analysis/{entry_id} - Get specific analysis',
+                'DELETE /spinocare-api/analysis/{entry_id} - Delete analysis'
             ]
         ]);
     }

@@ -173,3 +173,38 @@ data class AnalysisListData(
     @SerializedName("offset")
     val offset: Int
 )
+
+// ============================================
+// AUTHENTICATION MODELS
+// ============================================
+
+/**
+ * Register request (with password)
+ */
+data class RegisterRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("phone_number") val phoneNumber: String? = null
+)
+
+/**
+ * Login request
+ */
+data class LoginRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String
+)
+
+/**
+ * Auth response (register or login)
+ */
+data class AuthResponse(
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("uid") val uid: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("phone_number") val phoneNumber: String? = null,
+    @SerializedName("token") val token: String,
+    @SerializedName("message") val message: String
+)

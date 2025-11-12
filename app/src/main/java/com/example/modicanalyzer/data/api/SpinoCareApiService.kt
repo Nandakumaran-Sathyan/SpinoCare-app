@@ -9,8 +9,36 @@ import retrofit2.http.*
  */
 interface SpinoCareApiService {
     
+    // ============================================
+    // AUTHENTICATION ENDPOINTS
+    // ============================================
+    
     /**
-     * Register or update user
+     * Register new user with password
+     * POST /auth/register
+     */
+    @POST("index.php")
+    suspend fun register(
+        @Query("path") path: String = "auth/register",
+        @Body request: RegisterRequest
+    ): Response<ApiResponse<AuthResponse>>
+    
+    /**
+     * Login with email and password
+     * POST /auth/login
+     */
+    @POST("index.php")
+    suspend fun login(
+        @Query("path") path: String = "auth/login",
+        @Body request: LoginRequest
+    ): Response<ApiResponse<AuthResponse>>
+    
+    // ============================================
+    // LEGACY USER ENDPOINTS (for migration)
+    // ============================================
+    
+    /**
+     * Register or update user (legacy, no password)
      * POST /users/register
      */
     @POST("index.php")

@@ -1,6 +1,7 @@
 package com.example.modicanalyzer
 
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
@@ -40,6 +41,7 @@ import com.example.modicanalyzer.data.remote.FirestoreHelper
 import com.example.modicanalyzer.data.remote.FirebaseStorageHelper
 import com.example.modicanalyzer.data.repository.ImageUploadRepository
 import com.example.modicanalyzer.data.repository.MySQLRepository
+import com.example.modicanalyzer.data.repository.MySQLAuthRepository
 import com.example.modicanalyzer.util.NetworkConnectivityObserver
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
@@ -85,8 +87,20 @@ class SimpleMainActivity : ComponentActivity() {
     @javax.inject.Inject
     lateinit var mySQLRepository: MySQLRepository
     
+    // MySQL Auth Repository
+    @javax.inject.Inject
+    lateinit var authRepository: MySQLAuthRepository
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Check if user is logged in
+        if (!authRepository.isLoggedIn()) {
+            android.util.Log.d("SimpleMainActivity", "❌ User not logged in, redirecting to login")
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         
         modicAnalyzer = ModicAnalyzer(this)
         
@@ -104,7 +118,8 @@ class SimpleMainActivity : ComponentActivity() {
                     imageUploadRepository = imageUploadRepository,
                     networkObserver = networkObserver,
                     workManager = workManager,
-                    mySQLRepository = mySQLRepository
+                    mySQLRepository = mySQLRepository,
+                    authRepository = authRepository
                 )
             }
         }
@@ -127,7 +142,8 @@ fun MainScreen(
     imageUploadRepository: ImageUploadRepository,
     networkObserver: NetworkConnectivityObserver,
     workManager: WorkManager,
-    mySQLRepository: MySQLRepository
+    mySQLRepository: MySQLRepository,
+    authRepository: MySQLAuthRepository
 ) {
     var selectedScreen by remember { mutableStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -151,9 +167,10 @@ fun MainScreen(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                        // Display name from Firestore or fallback to AuthManager
-                        val userName = userProfile?.name 
-                            ?: userProfileViewModel.getUserName()
+                        // Display name from MySQL auth repository
+                        val userName = authRepository.getCurrentUserDisplayName() 
+                            ?: authRepository.getCurrentUserEmail()?.substringBefore("@")
+                            ?: "User"
                         
                         Text(
                             text = "Welcome, $userName",
@@ -212,7 +229,7 @@ fun MainScreen(
         }
     ) { paddingValues ->
         when (selectedScreen) {
-            0 -> AnalyzeScreen(analyzer, paddingValues, firestoreHelper, storageHelper, firebaseAuth, imageUploadRepository, networkObserver, workManager, mySQLRepository)
+            0 -> AnalyzeScreen(analyzer, paddingValues, firestoreHelper, storageHelper, firebaseAuth, imageUploadRepository, networkObserver, workManager, mySQLRepository, authRepository)
             1 -> Box(modifier = Modifier.padding(paddingValues)) { ModicGuideScreen() }
             2 -> Box(modifier = Modifier.padding(paddingValues)) { 
                 ProfileScreen(
@@ -229,14 +246,16 @@ fun MainScreen(
                         context.startActivity(intent)
                     },
                     onSignOutClick = {
-                        val authManager = AuthManager(context)
-                        authManager.logout()
+                        // Logout from MySQL auth
+                        authRepository.logout()
+                        android.util.Log.d("SimpleMainActivity", "🚪 User logged out")
                         android.widget.Toast.makeText(context, "Signed out successfully", android.widget.Toast.LENGTH_SHORT).show()
                         
                         val intent = android.content.Intent(context, LoginActivity::class.java)
                         intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
                         context.startActivity(intent)
-                    }
+                    },
+                    authRepository = authRepository
                 )
             }
         }
@@ -267,7 +286,8 @@ fun AnalyzeScreen(
     imageUploadRepository: ImageUploadRepository,
     networkObserver: NetworkConnectivityObserver,
     workManager: WorkManager,
-    mySQLRepository: MySQLRepository
+    mySQLRepository: MySQLRepository,
+    authRepository: MySQLAuthRepository
 ) {
     var t1Image by remember { mutableStateOf<Bitmap?>(null) }
     var t2Image by remember { mutableStateOf<Bitmap?>(null) }
@@ -347,11 +367,17 @@ fun AnalyzeScreen(
                     showResultDialog = true
                 }
                 
-                // Save to cloud (Firebase Storage + Firestore) after successful analysis
-                // Works with both online and offline users
-                val firebaseUser = firebaseAuth.currentUser
-                val userId = firebaseUser?.uid ?: java.util.UUID.randomUUID().toString() // Use UUID for offline users
-                val isOfflineUser = firebaseUser == null
+                // Save to cloud (Firebase Storage + MySQL) after successful analysis
+                // Get user ID from MySQL auth
+                val userId = authRepository.getCurrentUserUid()
+                if (userId == null) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Please login first", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                val isOfflineUser = false // Using MySQL auth, always authenticated
                 
                 // Check if device is online
                 val isOnline = networkObserver.isCurrentlyConnected()
@@ -407,22 +433,6 @@ fun AnalyzeScreen(
                                         android.util.Log.d("AnalyzeScreen", "🎉 Analysis saved to MySQL: ${saveData.entryId}")
                                         Toast.makeText(context, "Analysis saved to database ✅", Toast.LENGTH_SHORT).show()
                                     }
-                                    
-                                    // Also save to Firestore for backward compatibility (optional)
-                                    firestoreHelper.addMRIAnalysis(
-                                        userId = userId,
-                                        localUserId = userId,
-                                        isOfflineUser = false,
-                                        t1ImageUrl = t1Url,
-                                        t2ImageUrl = t2Url,
-                                        analysisResult = resultLabel,
-                                        confidence = result.confidence,
-                                        metadata = metadata
-                                    ).onSuccess { firestoreEntryId ->
-                                        android.util.Log.d("AnalyzeScreen", "📄 Also saved to Firestore: $firestoreEntryId")
-                                    }.onFailure { e ->
-                                        android.util.Log.w("AnalyzeScreen", "⚠️ Firestore save failed (non-critical): ${e.message}")
-                                    }
                                 }.onFailure { e ->
                                     withContext(Dispatchers.Main) {
                                         android.util.Log.e("AnalyzeScreen", "❌ Failed to save to MySQL", e)
@@ -431,79 +441,26 @@ fun AnalyzeScreen(
                                 }
                             }
                         }.onFailure { e ->
-                            // Upload failed - queue for later
-                            android.util.Log.w("AnalyzeScreen", "⚠️ Upload failed, queuing for retry", e)
+                            // Upload failed
+                            android.util.Log.w("AnalyzeScreen", "⚠️ Image upload failed", e)
                             
-                            (context as ComponentActivity).lifecycleScope.launch {
-                                // Save analysis entry without images first
-                                firestoreHelper.addMRIAnalysis(
-                                    userId = userId,
-                                    localUserId = userId,
-                                    isOfflineUser = false,
-                                    t1ImageUrl = "",
-                                    t2ImageUrl = "",
-                                    analysisResult = resultLabel,
-                                    confidence = result.confidence,
-                                    metadata = metadata
-                                ).onSuccess { entryId ->
-                                    // Queue images for background upload
-                                    imageUploadRepository.queueImageUpload(userId, entryId, t1, t2)
-                                    
-                                    // Trigger upload worker
-                                    val uploadWork = OneTimeWorkRequestBuilder<ImageUploadWorker>()
-                                        .setConstraints(
-                                            Constraints.Builder()
-                                                .setRequiredNetworkType(NetworkType.CONNECTED)
-                                                .build()
-                                        )
-                                        .build()
-                                    workManager.enqueue(uploadWork)
-                                    
-                                    withContext(Dispatchers.Main) {
-                                        android.util.Log.d("AnalyzeScreen", "📥 Analysis saved, images queued for upload")
-                                        Toast.makeText(context, "Analysis saved, images will upload when online ⏳", Toast.LENGTH_LONG).show()
-                                    }
-                                }.onFailure { e2 ->
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Failed to save analysis: ${e2.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "Image upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                         
                     } else {
-                        // Offline user or no network: Queue everything for later
-                        android.util.Log.d("AnalyzeScreen", "📴 Offline mode - queueing analysis and images")
+                        // No network - show message
+                        android.util.Log.d("AnalyzeScreen", "📴 No network - cannot upload images")
                         
-                        // Save analysis entry without images
-                        firestoreHelper.addMRIAnalysis(
-                            userId = userId,
-                            localUserId = userId,
-                            isOfflineUser = isOfflineUser,
-                            t1ImageUrl = "",
-                            t2ImageUrl = "",
-                            analysisResult = resultLabel,
-                            confidence = result.confidence,
-                            metadata = metadata
-                        ).onSuccess { entryId ->
-                            // Queue images for background upload
-                            imageUploadRepository.queueImageUpload(userId, entryId, t1, t2)
-                            
-                            withContext(Dispatchers.Main) {
-                                android.util.Log.d("AnalyzeScreen", "💾 Analysis saved locally, will sync when online")
-                                Toast.makeText(context, "Analysis saved offline, will sync when online 💾", Toast.LENGTH_LONG).show()
-                            }
-                        }.onFailure { e ->
-                            withContext(Dispatchers.Main) {
-                                android.util.Log.e("AnalyzeScreen", "❌ Failed to save analysis", e)
-                                Toast.makeText(context, "Failed to save analysis: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "No network. Please connect to internet to save analysis.", Toast.LENGTH_LONG).show()
                         }
                     }
                     
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        android.util.Log.e("AnalyzeScreen", "❌ Cloud save error", e)
+                        android.util.Log.e("AnalyzeScreen", "❌ Save error", e)
                     }
                 }
             } catch (exception: Exception) {
@@ -514,6 +471,8 @@ fun AnalyzeScreen(
             }
         }
     }
+
+
     
     LazyColumn(
         modifier = Modifier

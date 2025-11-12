@@ -33,6 +33,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.modicanalyzer.data.local.dao.PendingSignupDao
 import com.example.modicanalyzer.data.local.entity.PendingSignupEntity
 import com.example.modicanalyzer.data.remote.FirestoreHelper
+import com.example.modicanalyzer.data.repository.MySQLAuthRepository
 import com.example.modicanalyzer.utils.SignupValidator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -46,6 +47,9 @@ class SignupActivity : ComponentActivity() {
     companion object {
         private const val TAG = "SignupActivity"
     }
+    
+    @Inject
+    lateinit var authRepository: MySQLAuthRepository
     
     @Inject
     lateinit var firestoreHelper: FirestoreHelper
@@ -77,8 +81,8 @@ class SignupActivity : ComponentActivity() {
                         // Navigate back to login activity
                         finish() // This will return to login activity
                     },
-                    onSignup = { name, email, phone, password, role ->
-                        signupWithFirestore(name, email, phone, password, role)
+                    onSignup = { name, email, phone, password, role, onComplete ->
+                        signupWithMySQL(name, email, phone, password, role, onComplete)
                     }
                 )
             }
@@ -92,6 +96,80 @@ class SignupActivity : ComponentActivity() {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
     
+    /**
+     * Sign up with MySQL authentication (new implementation)
+     */
+    private fun signupWithMySQL(
+        name: String,
+        email: String,
+        phone: String,
+        password: String,
+        role: String,
+        onComplete: () -> Unit
+    ) {
+        // Validate password
+        if (password.length < 6) {
+            Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show()
+            onComplete() // Reset loading state
+            return
+        }
+        
+        lifecycleScope.launch {
+            try {
+                android.util.Log.d(TAG, "📝 Registering user with MySQL: $email")
+                
+                val result = authRepository.register(
+                    email = email,
+                    password = password,
+                    displayName = name,
+                    phoneNumber = phone.takeIf { it.isNotBlank() }
+                )
+                
+                result.onSuccess { authResponse ->
+                    android.util.Log.d(TAG, "✅ Registration successful: ${authResponse.email}")
+                    android.util.Log.d(TAG, "User UID: ${authResponse.uid}")
+                    
+                    Toast.makeText(
+                        this@SignupActivity,
+                        "✅ Account created successfully!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    
+                    onComplete() // Reset loading state
+                    
+                    // Navigate to main activity
+                    startActivity(Intent(this@SignupActivity, SimpleMainActivity::class.java))
+                    finish()
+                    
+                }.onFailure { e ->
+                    android.util.Log.e(TAG, "❌ Registration failed: ${e.message}")
+                    
+                    onComplete() // Reset loading state
+                    
+                    Toast.makeText(
+                        this@SignupActivity,
+                        "Registration failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ Registration error", e)
+                
+                onComplete() // Reset loading state
+                
+                Toast.makeText(
+                    this@SignupActivity,
+                    "Error: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+    
+    /**
+     * Legacy Firebase signup (kept for reference, not used)
+     */
     private fun signupWithFirestore(
         name: String,
         email: String,
@@ -351,7 +429,7 @@ class SignupActivity : ComponentActivity() {
 fun SignupScreen(
     onSignupSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    onSignup: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> }
+    onSignup: (String, String, String, String, String, () -> Unit) -> Unit = { _, _, _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     var fullName by remember { mutableStateOf("") }
@@ -757,8 +835,11 @@ fun SignupScreen(
                             
                             if (SignupValidator.isAllValid(validationResults)) {
                                 isLoading = true
-                                // Use Firestore integration
-                                onSignup(fullName.trim(), email.trim(), phone.trim(), password, selectedRole)
+                                // Use MySQL authentication with loading callback
+                                onSignup(fullName.trim(), email.trim(), phone.trim(), password, selectedRole) {
+                                    // Reset loading state when signup completes (success or error)
+                                    isLoading = false
+                                }
                             } else {
                                 // Show first validation error
                                 val errorMessage = SignupValidator.getFirstError(validationResults)

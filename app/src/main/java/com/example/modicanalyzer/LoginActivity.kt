@@ -33,6 +33,7 @@ import com.example.modicanalyzer.data.local.dao.PendingSignupDao
 import com.example.modicanalyzer.data.local.entity.PendingSignupEntity
 import com.example.modicanalyzer.data.model.AuthState
 import com.example.modicanalyzer.data.remote.FirestoreHelper
+import com.example.modicanalyzer.data.repository.MySQLAuthRepository
 import com.example.modicanalyzer.viewmodel.AuthViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -50,6 +51,9 @@ class LoginActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     
     @Inject
+    lateinit var authRepository: MySQLAuthRepository
+    
+    @Inject
     lateinit var pendingSignupDao: PendingSignupDao
     
     @Inject
@@ -62,6 +66,15 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         android.util.Log.d(TAG, "=== LoginActivity onCreate ===")
+        
+        // Check if user is already logged in with MySQL auth
+        if (authRepository.isLoggedIn()) {
+            android.util.Log.d(TAG, "✅ User already logged in, navigating to main")
+            startActivity(Intent(this, SimpleMainActivity::class.java))
+            finish()
+            return
+        }
+        
         android.util.Log.d(TAG, "Network available: ${isNetworkAvailable()}")
         
         // Process any pending signups from queue
@@ -77,8 +90,58 @@ class LoginActivity : ComponentActivity() {
                     },
                     onNavigateToSignup = {
                         startActivity(Intent(this@LoginActivity, SignupActivity::class.java))
+                    },
+                    authRepository = authRepository,
+                    onMySQLLogin = { email, password, onComplete ->
+                        handleLogin(email, password, onComplete)
                     }
                 )
+            }
+        }
+    }
+    
+    /**
+     * Handle MySQL login
+     */
+    private fun handleLogin(email: String, password: String, onComplete: () -> Unit) {
+        lifecycleScope.launch {
+            try {
+                android.util.Log.d(TAG, "🔐 Attempting MySQL login: $email")
+                
+                val result = authRepository.login(email, password)
+                
+                result.onSuccess { authResponse ->
+                    android.util.Log.d(TAG, "✅ Login successful: ${authResponse.email}")
+                    android.util.Log.d(TAG, "User UID: ${authResponse.uid}")
+                    
+                    onComplete() // Reset loading state
+                    
+                    // Successfully logged in, navigate to main
+                    startActivity(Intent(this@LoginActivity, SimpleMainActivity::class.java))
+                    finish()
+                    
+                }.onFailure { e ->
+                    android.util.Log.e(TAG, "❌ Login failed: ${e.message}")
+                    
+                    onComplete() // Reset loading state
+                    
+                    Toast.makeText(
+                        this@LoginActivity,
+                        "Login failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "❌ Login error", e)
+                
+                onComplete() // Reset loading state
+                
+                Toast.makeText(
+                    this@LoginActivity,
+                    "Error: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -216,117 +279,18 @@ class LoginActivity : ComponentActivity() {
 fun LoginScreen(
     viewModel: AuthViewModel,
     onLoginSuccess: () -> Unit,
-    onNavigateToSignup: () -> Unit
+    onNavigateToSignup: () -> Unit,
+    authRepository: MySQLAuthRepository,
+    onMySQLLogin: (String, String, () -> Unit) -> Unit
 ) {
     val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
-    var showForgotPasswordDialog by remember { mutableStateOf(false) }
-    var showEmailVerificationDialog by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
     
-    // Collect auth state
-    val authState by viewModel.authState.collectAsStateWithLifecycle()
-    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
-    
-    // Handle auth state changes
-    LaunchedEffect(authState) {
-        when (val state = authState) {
-            is AuthState.Success -> {
-                // Check email verification for online users
-                if (state.isFirebaseAuth && isOnline) {
-                    val isVerified = viewModel.checkEmailVerified()
-                    if (!isVerified) {
-                        // Show verification dialog instead of logging in
-                        showEmailVerificationDialog = true
-                        Toast.makeText(
-                            context,
-                            "Please verify your email to continue",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@LaunchedEffect
-                    }
-                }
-                
-                Toast.makeText(
-                    context,
-                    "Login successful! ${if (state.isFirebaseAuth) "Online" else "Offline"} mode",
-                    Toast.LENGTH_SHORT
-                ).show()
-                onLoginSuccess()
-            }
-            is AuthState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-            }
-            is AuthState.PasswordResetEmailSent -> {
-                Toast.makeText(
-                    context,
-                    "Password reset email sent! Check your inbox.",
-                    Toast.LENGTH_LONG
-                ).show()
-                showForgotPasswordDialog = false
-                viewModel.resetAuthState()
-            }
-            is AuthState.EmailVerificationSent -> {
-                Toast.makeText(
-                    context,
-                    "Verification email sent! Please check your inbox.",
-                    Toast.LENGTH_LONG
-                ).show()
-                viewModel.resetAuthState()
-            }
-            else -> {}
-        }
-    }
-    
-    // Forgot Password Dialog
-    if (showForgotPasswordDialog) {
-        ForgotPasswordDialog(
-            onDismiss = { 
-                showForgotPasswordDialog = false
-                viewModel.resetAuthState()
-            },
-            onSendEmail = { resetEmail ->
-                viewModel.sendPasswordResetEmail(resetEmail)
-            },
-            isLoading = authState is AuthState.Loading
-        )
-    }
-    
-    // Email Verification Dialog
-    if (showEmailVerificationDialog) {
-        EmailVerificationDialog(
-            onDismiss = {
-                showEmailVerificationDialog = false
-                viewModel.signOut() // Sign them out until verified
-                viewModel.resetAuthState()
-            },
-            onResendEmail = {
-                viewModel.sendEmailVerification()
-            },
-            onCheckVerification = {
-                viewModel.reloadUser()
-                // Re-check verification status
-                kotlinx.coroutines.GlobalScope.launch {
-                    kotlinx.coroutines.delay(500) // Wait for reload
-                    val isVerified = viewModel.checkEmailVerified()
-                    if (isVerified) {
-                        showEmailVerificationDialog = false
-                        onLoginSuccess()
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Email not yet verified. Please check your inbox.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            },
-            isLoading = authState is AuthState.Loading
-        )
-    }
-    
-    val isLoading = authState is AuthState.Loading
+    // Note: We're using MySQL authentication now, so Firebase-specific features
+    // like email verification and password reset are disabled
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -339,34 +303,6 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Connection Status Indicator
-            if (!isOnline) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = "Offline",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Offline Mode - Limited functionality",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
             
             // App Name/Header Section
             Text(
@@ -441,23 +377,6 @@ fun LoginScreen(
                         enabled = !isLoading
                     )
                     
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Forgot Password
-                    TextButton(
-                        onClick = {
-                            if (!isOnline) {
-                                Toast.makeText(context, "Password reset requires internet connection", Toast.LENGTH_SHORT).show()
-                            } else {
-                                showForgotPasswordDialog = true
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.End),
-                        enabled = !isLoading
-                    ) {
-                        Text("Forgot Password?")
-                    }
-                    
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     // Login Button
@@ -472,8 +391,12 @@ fun LoginScreen(
                                 return@Button
                             }
                             
-                            // Use AuthViewModel to login with proper validation
-                            viewModel.login(email, password)
+                            // Use MySQL authentication with loading callback
+                            isLoading = true
+                            onMySQLLogin(email, password) {
+                                // Reset loading state when login completes (success or error)
+                                isLoading = false
+                            }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -685,4 +608,108 @@ fun EmailVerificationDialog(
             }
         }
     )
+}
+
+/**
+ * MySQL Login Screen - Simple login UI
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MySQLLoginScreen(
+    onLoginSuccess: () -> Unit,
+    onNavigateToSignup: () -> Unit,
+    onLogin: (String, String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Logo/Title
+        Text(
+            text = "SpinoCare",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = com.example.modicanalyzer.ui.theme.ModicarePrimary
+        )
+        
+        Text(
+            text = "MRI Analysis Platform",
+            fontSize = 16.sp,
+            color = Color.Gray,
+            modifier = Modifier.padding(bottom = 48.dp)
+        )
+        
+        // Email field
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Password field
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                    Icon(
+                        imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (isPasswordVisible) "Hide password" else "Show password"
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Login button
+        Button(
+            onClick = {
+                if (email.isNotBlank() && password.isNotBlank()) {
+                    onLogin(email, password)
+                }
+            },
+            enabled = email.isNotBlank() && password.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = com.example.modicanalyzer.ui.theme.ModicarePrimary
+            )
+        ) {
+            Text("Login", modifier = Modifier.padding(8.dp))
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Signup link
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Don't have an account? ")
+            TextButton(onClick = onNavigateToSignup) {
+                Text(
+                    "Sign Up",
+                    color = com.example.modicanalyzer.ui.theme.ModicarePrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
