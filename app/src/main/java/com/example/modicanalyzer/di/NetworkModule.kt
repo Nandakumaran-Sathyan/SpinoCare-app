@@ -22,15 +22,13 @@ object NetworkModule {
      * Base URL for the API
      * For local development with XAMPP
      * 
-     * IMPORTANT: Using USB tethering IP address
-     * - Current: "http://10.20.139.33/spinocare-api/" (your laptop's IP via USB tethering)
-     * - Your phone is connected via USB tethering (Ethernet 2)
-     * - Phone's gateway IP: 10.20.139.174
-     * - Laptop's assigned IP: 10.20.139.33
-     * - If connection fails, run: ipconfig to find current "Ethernet 2" IP
-     * - Update this IP if tethering reconnects with different IP
+     * IMPORTANT: Using WiFi IP address
+     * - Current: "http://192.168.0.101/spinocare-api/" (your laptop's WiFi IP)
+     * - Make sure your phone and laptop are on the SAME WiFi network
+     * - If connection fails, run: ipconfig to find current WiFi IP
+     * - Update this IP if your WiFi IP changes
      */
-    private const val BASE_URL = "http://10.20.139.33/spinocare-api/"
+    private const val BASE_URL = "http://192.168.0.101/spinocare-api/"
     
     @Provides
     @Singleton

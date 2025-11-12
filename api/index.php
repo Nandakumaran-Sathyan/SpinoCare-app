@@ -45,6 +45,11 @@ try {
         require_once 'auth.php';
         handleAuthRequest($method, $segments);
     }
+    // Firebase token endpoint
+    else if (isset($segments[0]) && $segments[0] === 'firebase' && isset($segments[1]) && $segments[1] === 'token') {
+        require_once 'firebase_auth.php';
+        handleFirebaseTokenRequest($pdo);
+    }
     // User endpoints
     else if (isset($segments[0]) && $segments[0] === 'users') {
         require_once 'users.php';
@@ -63,6 +68,7 @@ try {
             'endpoints' => [
                 'POST /spinocare-api/auth/register - Register new user with password',
                 'POST /spinocare-api/auth/login - Login with email and password',
+                'GET /spinocare-api/firebase/token - Get Firebase custom token (requires auth)',
                 'POST /spinocare-api/users/register - Legacy: Register user (no password)',
                 'GET /spinocare-api/users/{uid} - Get user details',
                 'POST /spinocare-api/analysis/save - Save MRI analysis',

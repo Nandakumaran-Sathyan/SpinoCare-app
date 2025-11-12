@@ -208,3 +208,11 @@ data class AuthResponse(
     @SerializedName("token") val token: String,
     @SerializedName("message") val message: String
 )
+
+/**
+ * Firebase custom token response
+ */
+data class FirebaseTokenResponse(
+    @SerializedName("firebase_token") val firebaseToken: String,
+    @SerializedName("expires_in") val expiresIn: Int
+)

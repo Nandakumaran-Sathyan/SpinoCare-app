@@ -33,6 +33,17 @@ interface SpinoCareApiService {
         @Body request: LoginRequest
     ): Response<ApiResponse<AuthResponse>>
     
+    /**
+     * Get Firebase custom token for authenticated user
+     * GET /firebase/token
+     * Requires Authorization: Bearer {mysql_token}
+     */
+    @GET("index.php")
+    suspend fun getFirebaseToken(
+        @Query("path") path: String = "firebase/token",
+        @Header("Authorization") authToken: String
+    ): Response<ApiResponse<FirebaseTokenResponse>>
+    
     // ============================================
     // LEGACY USER ENDPOINTS (for migration)
     // ============================================
