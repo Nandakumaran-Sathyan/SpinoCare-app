@@ -39,6 +39,7 @@ import com.example.modicanalyzer.viewmodel.UserProfileViewModel
 import com.example.modicanalyzer.data.remote.FirestoreHelper
 import com.example.modicanalyzer.data.remote.FirebaseStorageHelper
 import com.example.modicanalyzer.data.repository.ImageUploadRepository
+import com.example.modicanalyzer.data.repository.MySQLRepository
 import com.example.modicanalyzer.util.NetworkConnectivityObserver
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.AndroidEntryPoint
@@ -80,6 +81,10 @@ class SimpleMainActivity : ComponentActivity() {
     @javax.inject.Inject
     lateinit var workManager: WorkManager
     
+    // MySQL Repository for new database backend
+    @javax.inject.Inject
+    lateinit var mySQLRepository: MySQLRepository
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -98,7 +103,8 @@ class SimpleMainActivity : ComponentActivity() {
                     firebaseAuth = firebaseAuth,
                     imageUploadRepository = imageUploadRepository,
                     networkObserver = networkObserver,
-                    workManager = workManager
+                    workManager = workManager,
+                    mySQLRepository = mySQLRepository
                 )
             }
         }
@@ -120,7 +126,8 @@ fun MainScreen(
     firebaseAuth: FirebaseAuth,
     imageUploadRepository: ImageUploadRepository,
     networkObserver: NetworkConnectivityObserver,
-    workManager: WorkManager
+    workManager: WorkManager,
+    mySQLRepository: MySQLRepository
 ) {
     var selectedScreen by remember { mutableStateOf(0) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -205,7 +212,7 @@ fun MainScreen(
         }
     ) { paddingValues ->
         when (selectedScreen) {
-            0 -> AnalyzeScreen(analyzer, paddingValues, firestoreHelper, storageHelper, firebaseAuth, imageUploadRepository, networkObserver, workManager)
+            0 -> AnalyzeScreen(analyzer, paddingValues, firestoreHelper, storageHelper, firebaseAuth, imageUploadRepository, networkObserver, workManager, mySQLRepository)
             1 -> Box(modifier = Modifier.padding(paddingValues)) { ModicGuideScreen() }
             2 -> Box(modifier = Modifier.padding(paddingValues)) { 
                 ProfileScreen(
@@ -259,7 +266,8 @@ fun AnalyzeScreen(
     firebaseAuth: FirebaseAuth,
     imageUploadRepository: ImageUploadRepository,
     networkObserver: NetworkConnectivityObserver,
-    workManager: WorkManager
+    workManager: WorkManager,
+    mySQLRepository: MySQLRepository
 ) {
     var t1Image by remember { mutableStateOf<Bitmap?>(null) }
     var t2Image by remember { mutableStateOf<Bitmap?>(null) }
@@ -376,23 +384,48 @@ fun AnalyzeScreen(
                             android.util.Log.d("AnalyzeScreen", "✅ Images uploaded successfully")
                             
                             (context as ComponentActivity).lifecycleScope.launch {
-                                firestoreHelper.addMRIAnalysis(
-                                    userId = userId,
-                                    localUserId = userId,
-                                    isOfflineUser = false,
+                                // Save to MySQL database via REST API
+                                val entryId = java.util.UUID.randomUUID().toString()
+                                val analysisMode = result.analysisMode // "online" or "offline"
+                                val modelVersion = "v1.0" // You can make this dynamic
+                                val processingTimeMs = null // Add if you track this
+                                
+                                val saveResult = mySQLRepository.saveAnalysis(
+                                    firebaseUid = userId,
+                                    entryId = entryId,
                                     t1ImageUrl = t1Url,
                                     t2ImageUrl = t2Url,
                                     analysisResult = resultLabel,
                                     confidence = result.confidence,
-                                    metadata = metadata
-                                ).onSuccess { entryId ->
+                                    analysisMode = analysisMode,
+                                    modelVersion = modelVersion,
+                                    processingTimeMs = processingTimeMs
+                                )
+                                
+                                saveResult.onSuccess { saveData ->
                                     withContext(Dispatchers.Main) {
-                                        android.util.Log.d("AnalyzeScreen", "🎉 Analysis saved to cloud: $entryId")
-                                        Toast.makeText(context, "Analysis saved to cloud ✅", Toast.LENGTH_SHORT).show()
+                                        android.util.Log.d("AnalyzeScreen", "🎉 Analysis saved to MySQL: ${saveData.entryId}")
+                                        Toast.makeText(context, "Analysis saved to database ✅", Toast.LENGTH_SHORT).show()
+                                    }
+                                    
+                                    // Also save to Firestore for backward compatibility (optional)
+                                    firestoreHelper.addMRIAnalysis(
+                                        userId = userId,
+                                        localUserId = userId,
+                                        isOfflineUser = false,
+                                        t1ImageUrl = t1Url,
+                                        t2ImageUrl = t2Url,
+                                        analysisResult = resultLabel,
+                                        confidence = result.confidence,
+                                        metadata = metadata
+                                    ).onSuccess { firestoreEntryId ->
+                                        android.util.Log.d("AnalyzeScreen", "📄 Also saved to Firestore: $firestoreEntryId")
+                                    }.onFailure { e ->
+                                        android.util.Log.w("AnalyzeScreen", "⚠️ Firestore save failed (non-critical): ${e.message}")
                                     }
                                 }.onFailure { e ->
                                     withContext(Dispatchers.Main) {
-                                        android.util.Log.e("AnalyzeScreen", "❌ Failed to save to Firestore", e)
+                                        android.util.Log.e("AnalyzeScreen", "❌ Failed to save to MySQL", e)
                                         Toast.makeText(context, "Failed to save analysis: ${e.message}", Toast.LENGTH_SHORT).show()
                                     }
                                 }

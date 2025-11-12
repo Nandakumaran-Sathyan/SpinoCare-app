@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpinoCare Application Workflow Chart</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #E57373;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #333;
+        }
+
+        .tab:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: #E57373;
+            color: white;
+            box-shadow: 0 4px 12px rgba(229, 115, 115, 0.4);
+        }
+
+        .workflow-section {
+            display: none;
+        }
+
+        .workflow-section.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .flow-row {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            min-width: 200px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+
+        .flow-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .flow-box.start {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .flow-box.process {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .flow-box.decision {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flow-box.end {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .flow-box.offline {
+            background: linear-gradient(135deg, #E57373 0%, #C62828 100%);
+        }
+
+        .flow-box.online {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .flow-box h3 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .flow-box p {
+            font-size: 0.9em;
+            opacity: 0.95;
+            line-height: 1.5;
+        }
+
+        .flow-box .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .arrow {
+            font-size: 2em;
+            color: #667eea;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .arrow-horizontal {
+            font-size: 2em;
+            color: #667eea;
+        }
+
+        .split-flow {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .flow-branch {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .branch-label {
+            background: #f5f5f5;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #333;
+            border: 2px solid #667eea;
+        }
+
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, #667eea, #764ba2);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(odd) {
+            flex-direction: row;
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #E57373;
+        }
+
+        .timeline-item:nth-child(even) .timeline-content {
+            border-left: none;
+            border-right: 4px solid #E57373;
+        }
+
+        .timeline-dot {
+            width: 20px;
+            height: 20px;
+            background: #E57373;
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 0 0 3px #E57373;
+            z-index: 2;
+        }
+
+        .timeline-time {
+            font-weight: 700;
+            color: #E57373;
+            margin-bottom: 5px;
+        }
+
+        .grid-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .grid-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #E57373;
+        }
+
+        .grid-item h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .grid-item ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .grid-item li {
+            padding: 8px 0;
+            color: #666;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .grid-item li:last-child {
+            border-bottom: none;
+        }
+
+        .grid-item li::before {
+            content: '✓ ';
+            color: #E57373;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .flow-box {
+                min-width: 150px;
+                max-width: 100%;
+            }
+
+            .split-flow {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .timeline::before {
+                left: 20px;
+            }
+
+            .timeline-item:nth-child(even) {
+                flex-direction: row;
+            }
+
+            .timeline-item:nth-child(even) .timeline-content {
+                border-left: 4px solid #E57373;
+                border-right: none;
+            }
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .keyword { color: #569cd6; }
+        .string { color: #ce9178; }
+        .comment { color: #6a9955; }
+        .function { color: #dcdcaa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 SpinoCare Application Workflow</h1>
+        <p class="subtitle">AI-Powered Modic Change Detection System</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showSection('overview')">📊 Overview</button>
+            <button class="tab" onclick="showSection('user-flow')">👤 User Journey</button>
+            <button class="tab" onclick="showSection('analysis')">🔬 Analysis Flow</button>
+            <button class="tab" onclick="showSection('auto-update')">🔄 Auto-Update</button>
+            <button class="tab" onclick="showSection('architecture')">🏗️ Architecture</button>
+            <button class="tab" onclick="showSection('data-flow')">📡 Data Flow</button>
+        </div>
+
+        <!-- Overview Section -->
+        <div id="overview" class="workflow-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">1-3s</div>
+                    <div class="stat-label">Local Inference</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">2-5s</div>
+                    <div class="stat-label">Online Inference</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">6h</div>
+                    <div class="stat-label">Auto-Update Interval</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">~8MB</div>
+                    <div class="stat-label">Model Size</div>
+                </div>
+            </div>
+
+            <div class="flowchart">
+                <div class="flow-row">
+                    <div class="flow-box start">
+                        <div class="icon">🚀</div>
+                        <h3>App Launch</h3>
+                        <p>SpinoCare initializes</p>
+                    </div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="flow-box process">
+                        <div class="icon">🔧</div>
+                        <h3>Initialize Components</h3>
+                        <p>Load model, setup analyzers, start auto-update</p>
+                    </div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="flow-box decision">
+                        <div>
+                            <h3>Model Available?</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-flow">
+                    <div class="flow-branch">
+                        <div class="branch-label">✅ YES</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box process">
+                            <div class="icon">📱</div>
+                            <h3>Offline Ready</h3>
+                            <p>Load from assets or storage</p>
+                        </div>
+                    </div>
+
+                    <div class="flow-branch">
+                        <div class="branch-label">❌ NO</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box process">
+                            <div class="icon">🌐</div>
+                            <h3>Online Mode</h3>
+                            <p>Auto-download in background</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="flow-box end">
+                        <div class="icon">✅</div>
+                        <h3>Ready for Analysis</h3>
+                        <p>User can analyze MRI scans</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);"></div>
+                    <span>Start/End</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                    <span>Process</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
+                    <span>Decision</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                    <span>Result</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Journey Section -->
+        <div id="user-flow" class="workflow-section">
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">Step 1</div>
+                        <h3>📸 Select T1 Image</h3>
+                        <p>User taps "Select T1 Image" button</p>
+                        <p>→ Opens gallery/camera picker</p>
+                        <p>→ UCrop opens for cropping</p>
+                        <p>→ Confirm cropped image</p>
+                    </div>
+                    <div class="timeline-dot"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">Step 2</div>
+                        <h3>📸 Select T2 Image</h3>
+                        <p>User taps "Select T2 Image" button</p>
+                        <p>→ Opens gallery/camera picker</p>
+                        <p>→ UCrop opens for cropping</p>
+                        <p>→ Confirm cropped image</p>
+                    </div>
+                    <div class="timeline-dot"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">Step 3</div>
+                        <h3>🔬 Analyze</h3>
+                        <p>User taps "Analyze Images" button</p>
+                        <p>→ System checks analysis mode</p>
+                        <p>→ Routes to Local or Remote analyzer</p>
+                        <p>→ Shows loading indicator</p>
+                    </div>
+                    <div class="timeline-dot"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">Step 4</div>
+                        <h3>🧠 Processing</h3>
+                        <p>Images preprocessed (resize, normalize)</p>
+                        <p>→ TFLite inference (local) or HTTP request (online)</p>
+                        <p>→ Model predicts Modic changes</p>
+                        <p>→ Calculates confidence scores</p>
+                    </div>
+                    <div class="timeline-dot"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">Step 5</div>
+                        <h3>📊 View Results</h3>
+                        <p>Result card displays:</p>
+                        <p>✓ Label: "Modic Change Detected" or "No Modic Changes"</p>
+                        <p>✓ Confidence: XX.XX%</p>
+                        <p>✓ Analysis mode badge (🌐 Online / 📱 Offline)</p>
+                        <p>✓ Color-coded indicator</p>
+                    </div>
+                    <div class="timeline-dot"></div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">Step 6</div>
+                        <h3>🎯 Next Actions</h3>
+                        <p>User options:</p>
+                        <p>→ Analyze another scan</p>
+                        <p>→ Share results</p>
+                        <p>→ Save to history</p>
+                        <p>→ Open settings</p>
+                    </div>
+                    <div class="timeline-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Flow Section -->
+        <div id="analysis" class="workflow-section">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">🔬 Analysis Flow Comparison</h2>
+            
+            <div class="split-flow">
+                <!-- Offline Flow -->
+                <div class="flow-branch" style="flex: 1;">
+                    <h3 style="color: #E57373; text-align: center;">📱 Offline Mode (Local TFLite)</h3>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box offline">
+                        <h3>Load Model</h3>
+                        <p>From assets or internal storage</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box offline">
+                        <h3>Preprocess Images</h3>
+                        <p>Resize: 224×224<br>Normalize: (x-127.5)/127.5</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box offline">
+                        <h3>ByteBuffer</h3>
+                        <p>LITTLE_ENDIAN order<br>Float32 array</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box offline">
+                        <h3>TFLite Inference</h3>
+                        <p>Dual-input CNN<br>Local processing</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box offline">
+                        <h3>Get Scores</h3>
+                        <p>[noModic, modic]<br>Float array output</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box end">
+                        <h3>Result</h3>
+                        <p>1-3 seconds<br>100% private</p>
+                    </div>
+                </div>
+
+                <!-- Online Flow -->
+                <div class="flow-branch" style="flex: 1;">
+                    <h3 style="color: #4facfe; text-align: center;">🌐 Online Mode (Server API)</h3>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box online">
+                        <h3>Convert to PNG</h3>
+                        <p>Bitmap → ByteArray</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box online">
+                        <h3>Base64 Encode</h3>
+                        <p>Prepare for HTTP transmission</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box online">
+                        <h3>POST /predict</h3>
+                        <p>Send to FastAPI server<br>modic.onrender.com</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box online">
+                        <h3>Server Processing</h3>
+                        <p>Decode → Preprocess<br>TFLite inference</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box online">
+                        <h3>JSON Response</h3>
+                        <p>label, confidence<br>detailed_scores</p>
+                    </div>
+                    <div class="arrow">↓</div>
+                    <div class="flow-box end">
+                        <h3>Result</h3>
+                        <p>2-5 seconds<br>Cloud-based</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-block">
+<span class="comment">// Local Inference Example</span>
+<span class="keyword">val</span> localAnalyzer = <span class="function">LocalModelAnalyzer</span>(context)
+<span class="keyword">val</span> result = localAnalyzer.<span class="function">analyze</span>(t1Image, t2Image)
+<span class="comment">// Result: AnalysisResult(label="No Modic Changes", confidence=0.9969, mode="offline")</span>
+
+<span class="comment">// Online Inference Example</span>
+<span class="keyword">val</span> remoteAnalyzer = <span class="function">RemoteModelAnalyzer</span>(context)
+<span class="keyword">val</span> result = remoteAnalyzer.<span class="function">analyze</span>(t1Image, t2Image)
+<span class="comment">// Result: AnalysisResult(label="No Modic Changes", confidence=0.9999, mode="online")</span>
+            </div>
+        </div>
+
+        <!-- Auto-Update Section -->
+        <div id="auto-update" class="workflow-section">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">🔄 Automatic Model Update System</h2>
+            
+            <div class="flowchart">
+                <div class="flow-row">
+                    <div class="flow-box start">
+                        <div class="icon">⏰</div>
+                        <h3>Every 6 Hours</h3>
+                        <p>Background timer triggers</p>
+                    </div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+
+                <div class="flow-row">
+                    <div class="flow-box decision">
+                        <div>
+                            <h3>Network Available?</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-flow">
+                    <div class="flow-branch">
+                        <div class="branch-label">❌ NO</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box process">
+                            <h3>Skip Update</h3>
+                            <p>Wait for next cycle</p>
+                        </div>
+                    </div>
+
+                    <div class="flow-branch">
+                        <div class="branch-label">✅ YES</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box process">
+                            <h3>GET /model_info</h3>
+                            <p>Fetch: hash, version, size</p>
+                        </div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box decision">
+                            <div>
+                                <h3>Hash Different?</h3>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 20px; margin-top: 20px;">
+                            <div style="flex: 1; text-align: center;">
+                                <div class="branch-label">❌ SAME</div>
+                                <div class="arrow">↓</div>
+                                <div class="flow-box process">
+                                    <h3>Up to Date</h3>
+                                    <p>No action needed</p>
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 1; text-align: center;">
+                                <div class="branch-label">✅ DIFFERENT</div>
+                                <div class="arrow">↓</div>
+                                <div class="flow-box process">
+                                    <h3>Download Model</h3>
+                                    <p>GET /get_global_model</p>
+                                </div>
+                                <div class="arrow">↓</div>
+                                <div class="flow-box process">
+                                    <h3>Verify Hash</h3>
+                                    <p>SHA-256 validation</p>
+                                </div>
+                                <div class="arrow">↓</div>
+                                <div class="flow-box decision">
+                                    <div>
+                                        <h3>Valid?</h3>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                                    <div style="flex: 1;">
+                                        <div class="branch-label" style="font-size: 0.8em;">❌</div>
+                                        <div class="flow-box" style="background: #f44336; font-size: 0.8em; padding: 10px;">
+                                            <p>Delete temp<br>Keep old</p>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div class="branch-label" style="font-size: 0.8em;">✅</div>
+                                        <div class="flow-box end" style="font-size: 0.8em; padding: 10px;">
+                                            <p>Replace<br>Updated!</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="code-block">
+<span class="comment">// Auto-update initialization</span>
+modicAnalyzer.<span class="function">initializeAutoUpdates</span>()
+
+<span class="comment">// Background coroutine checks every 6 hours</span>
+<span class="keyword">while</span> (isActive) {
+    <span class="keyword">if</span> (<span class="function">isNetworkAvailable</span>()) {
+        <span class="keyword">val</span> modelInfo = <span class="function">getModelInfo</span>()  <span class="comment">// GET /model_info</span>
+        <span class="keyword">val</span> localHash = <span class="function">calculateFileHash</span>(localModel)
+        
+        <span class="keyword">if</span> (modelInfo.model_hash != localHash) {
+            <span class="comment">// Download new model</span>
+            <span class="function">downloadModel</span>(modelInfo.download_url)
+            <span class="function">verifyAndReplace</span>()
+        }
+    }
+    <span class="function">delay</span>(<span class="string">CHECK_INTERVAL_MS</span>)  <span class="comment">// 6 hours</span>
+}
+            </div>
+        </div>
+
+        <!-- Architecture Section -->
+        <div id="architecture" class="workflow-section">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">🏗️ System Architecture</h2>
+            
+            <div class="grid-flow">
+                <div class="grid-item">
+                    <h3>📱 Frontend (Kotlin/Compose)</h3>
+                    <ul>
+                        <li>SimpleMainActivity</li>
+                        <li>ModelSettingsActivity</li>
+                        <li>UCrop Integration</li>
+                        <li>Jetpack Compose UI</li>
+                        <li>Material Design 3</li>
+                    </ul>
+                </div>
+
+                <div class="grid-item">
+                    <h3>🧠 Analysis Engine</h3>
+                    <ul>
+                        <li>ModicAnalyzer (Unified)</li>
+                        <li>LocalModelAnalyzer</li>
+                        <li>RemoteModelAnalyzer</li>
+                        <li>TensorFlow Lite</li>
+                        <li>Dual-input CNN</li>
+                    </ul>
+                </div>
+
+                <div class="grid-item">
+                    <h3>🔄 Model Management</h3>
+                    <ul>
+                        <li>ModelUpdateManager</li>
+                        <li>SHA-256 Hash Verification</li>
+                        <li>SharedPreferences Cache</li>
+                        <li>Asset Loading</li>
+                        <li>Background Downloads</li>
+                    </ul>
+                </div>
+
+                <div class="grid-item">
+                    <h3>🌐 Backend (Python/FastAPI)</h3>
+                    <ul>
+                        <li>FastAPI Server</li>
+                        <li>/predict Endpoint</li>
+                        <li>/model_info Endpoint</li>
+                        <li>/get_global_model</li>
+                        <li>Federated Learning</li>
+                    </ul>
+                </div>
+
+                <div class="grid-item">
+                    <h3>💾 Data Storage</h3>
+                    <ul>
+                        <li>Assets (Bundled Model)</li>
+                        <li>Internal Storage (Downloads)</li>
+                        <li>SharedPreferences</li>
+                        <li>Temporary Files</li>
+                        <li>Cache Management</li>
+                    </ul>
+                </div>
+
+                <div class="grid-item">
+                    <h3>🔐 Security & Privacy</h3>
+                    <ul>
+                        <li>Local Inference (Private)</li>
+                        <li>HTTPS Communication</li>
+                        <li>Hash Verification</li>
+                        <li>No Data Collection</li>
+                        <li>HIPAA Compliant Design</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top: 40px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                <h3 style="text-align: center; margin-bottom: 20px;">🎯 Key Features</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: center;">
+                    <div>
+                        <div style="font-size: 2em;">⚡</div>
+                        <div style="font-weight: 600;">Fast Inference</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">1-3 seconds local</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 2em;">🔒</div>
+                        <div style="font-weight: 600;">Privacy First</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Offline capable</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 2em;">🔄</div>
+                        <div style="font-weight: 600;">Auto Updates</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Always current</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 2em;">🎨</div>
+                        <div style="font-weight: 600;">Modern UI</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Material Design</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow Section -->
+        <div id="data-flow" class="workflow-section">
+            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">📡 Data Flow Diagrams</h2>
+            
+            <h3 style="color: #667eea; margin: 30px 0 20px 0;">Image Data Flow</h3>
+            <div class="flowchart">
+                <div class="flow-row">
+                    <div class="flow-box start">📷 Gallery/Camera</div>
+                    <div class="arrow-horizontal">→</div>
+                    <div class="flow-box process">✂️ UCrop</div>
+                    <div class="arrow-horizontal">→</div>
+                    <div class="flow-box process">📱 MainActivity</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box process">🧠 ModicAnalyzer (Router)</div>
+                </div>
+                <div class="split-flow">
+                    <div class="flow-branch">
+                        <div class="branch-label">📱 Offline Path</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box offline" style="font-size: 0.85em;">
+                            <p>Bitmap → ByteBuffer<br>Resize: 224×224<br>Normalize<br>LITTLE_ENDIAN</p>
+                        </div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box offline">TFLite Interpreter</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box end">Float Array</div>
+                    </div>
+                    <div class="flow-branch">
+                        <div class="branch-label">🌐 Online Path</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box online" style="font-size: 0.85em;">
+                            <p>Bitmap → PNG<br>ByteArray<br>Base64 Encode</p>
+                        </div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box online">HTTP POST</div>
+                        <div class="arrow">↓</div>
+                        <div class="flow-box end">JSON Response</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color: #667eea; margin: 30px 0 20px 0;">Model Update Data Flow</h3>
+            <div class="flowchart">
+                <div class="flow-row">
+                    <div class="flow-box start">☁️ Server<br>(modic.onrender.com)</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box process">GET /model_info<br>{hash, version, size}</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box process">🔄 ModelUpdateManager<br>Compare Hashes</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box process">GET /get_global_model<br>Download Stream</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box process">💾 Save to Internal Storage<br>modic_model_offline.tflite</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box process">✅ Verify SHA-256 Hash</div>
+                </div>
+                <div class="flow-row">
+                    <div class="arrow">↓</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box end">📱 Ready for Inference</div>
+                </div>
+            </div>
+
+            <h3 style="color: #667eea; margin: 30px 0 20px 0;">State Management</h3>
+            <div class="grid-flow">
+                <div class="grid-item">
+                    <h3>SharedPreferences: model_prefs</h3>
+                    <ul>
+                        <li>last_model_hash</li>
+                        <li>last_check_time</li>
+                        <li>model_version</li>
+                        <li>auto_update_enabled</li>
+                    </ul>
+                </div>
+                <div class="grid-item">
+                    <h3>SharedPreferences: analyzer_prefs</h3>
+                    <ul>
+                        <li>offline_mode_enabled</li>
+                        <li>local_model_downloaded</li>
+                    </ul>
+                </div>
+                <div class="grid-item">
+                    <h3>Application State</h3>
+                    <ul>
+                        <li>isOfflineModeEnabled()</li>
+                        <li>isLocalModelAvailable()</li>
+                        <li>isAutoUpdateEnabled()</li>
+                        <li>getAnalysisModeInfo()</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.workflow-section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected section
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                selectedSection.classList.add('active');
+            }
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

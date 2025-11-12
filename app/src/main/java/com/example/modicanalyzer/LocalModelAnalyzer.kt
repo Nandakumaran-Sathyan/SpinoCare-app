@@ -31,7 +31,9 @@ class LocalModelAnalyzer(private val context: Context) {
     companion object {
         private const val TAG = "LocalAnalyzer"
         private const val MODEL_FILENAME = "modic_model_offline.tflite"
+        private const val ASSET_MODEL_FILENAME = "modic_model.tflite"  // Model bundled in APK
         private const val DOWNLOAD_URL = "https://modic.onrender.com/get_global_model"
+        private const val VERSION_URL = "https://modic.onrender.com/model_version"
         
         private const val FLOAT_TYPE_SIZE = 4
         private const val PIXEL_SIZE = 3 // RGB
@@ -41,12 +43,97 @@ class LocalModelAnalyzer(private val context: Context) {
         private const val NORMALIZATION_MEAN = 127.5f
         private const val NORMALIZATION_STD = 127.5f
         
+        // Model version tracking
+        private const val VERSION_PREF_KEY = "model_version"
+        private const val LAST_CHECK_PREF_KEY = "last_version_check"
+        private const val CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L // 24 hours
+        
         /**
-         * Check if model file exists in internal storage
+         * Check if model file exists (either in assets or internal storage)
          */
         fun isModelFileAvailable(context: Context): Boolean {
+            // Check if bundled in assets first (part of APK)
+            try {
+                val assetList = context.assets.list("")
+                if (assetList?.contains(ASSET_MODEL_FILENAME) == true) {
+                    Log.d(TAG, "✅ Model found in assets (bundled with APK)")
+                    return true
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not check assets: ${e.message}")
+            }
+            
+            // Check if downloaded to internal storage
             val modelFile = File(context.filesDir, MODEL_FILENAME)
-            return modelFile.exists() && modelFile.length() > 0
+            val exists = modelFile.exists() && modelFile.length() > 0
+            if (exists) {
+                Log.d(TAG, "✅ Model found in internal storage (downloaded)")
+            }
+            return exists
+        }
+        
+        /**
+         * Check server for newer model version and auto-update if available
+         */
+        suspend fun checkAndUpdateModel(context: Context): Boolean = withContext(Dispatchers.IO) {
+            try {
+                val prefs = context.getSharedPreferences("model_prefs", android.content.Context.MODE_PRIVATE)
+                val lastCheck = prefs.getLong(LAST_CHECK_PREF_KEY, 0)
+                val now = System.currentTimeMillis()
+                
+                // Only check once per day
+                if (now - lastCheck < CHECK_INTERVAL_MS) {
+                    Log.d(TAG, "⏭️ Skipping version check (last checked ${(now - lastCheck) / 1000 / 60 / 60} hours ago)")
+                    return@withContext false
+                }
+                
+                Log.d(TAG, "🔍 Checking server for model updates...")
+                
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(10, TimeUnit.SECONDS)
+                    .build()
+                
+                // Get server model version
+                val versionRequest = Request.Builder()
+                    .url(VERSION_URL)
+                    .get()
+                    .build()
+                
+                val versionResponse = client.newCall(versionRequest).execute()
+                
+                if (!versionResponse.isSuccessful) {
+                    Log.w(TAG, "Could not check version: ${versionResponse.code}")
+                    return@withContext false
+                }
+                
+                val serverVersion = versionResponse.body?.string()?.trim() ?: "unknown"
+                val currentVersion = prefs.getString(VERSION_PREF_KEY, "0") ?: "0"
+                
+                // Update last check time
+                prefs.edit().putLong(LAST_CHECK_PREF_KEY, now).apply()
+                
+                Log.d(TAG, "📊 Version check: Current=$currentVersion, Server=$serverVersion")
+                
+                // If server has newer version, download it
+                if (serverVersion != currentVersion && serverVersion != "unknown") {
+                    Log.d(TAG, "🆕 New model version available! Downloading...")
+                    val downloadSuccess = downloadModel(context) { progress ->
+                        Log.d(TAG, "⬇️ Download progress: $progress%")
+                    }
+                    
+                    if (downloadSuccess) {
+                        prefs.edit().putString(VERSION_PREF_KEY, serverVersion).apply()
+                        Log.d(TAG, "✅ Model updated to version $serverVersion")
+                        return@withContext true
+                    }
+                }
+                
+                false
+            } catch (e: Exception) {
+                Log.e(TAG, "Version check failed", e)
+                false
+            }
         }
         
         /**
@@ -132,14 +219,8 @@ class LocalModelAnalyzer(private val context: Context) {
      */
     @Throws(IOException::class)
     private fun initializeInterpreter() {
-        val modelFile = File(context.filesDir, MODEL_FILENAME)
-        
-        if (!modelFile.exists()) {
-            throw IOException("Local model file not found. Please download first.")
-        }
-        
         try {
-            val model = loadModelFile(modelFile)
+            val model = loadModelFile()
             
             val options = Interpreter.Options().apply {
                 setNumThreads(4)
@@ -165,12 +246,35 @@ class LocalModelAnalyzer(private val context: Context) {
     
     /**
      * Load model file into ByteBuffer
+     * Tries assets first (bundled with APK), then internal storage (downloaded)
      */
-    private fun loadModelFile(modelFile: File): ByteBuffer {
+    private fun loadModelFile(): ByteBuffer {
+        // Try loading from assets first (bundled in APK)
+        try {
+            val assetFileDescriptor = context.assets.openFd(ASSET_MODEL_FILENAME)
+            val inputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
+            val fileChannel = inputStream.channel
+            val startOffset = assetFileDescriptor.startOffset
+            val declaredLength = assetFileDescriptor.declaredLength
+            
+            Log.d(TAG, "📦 Loading model from assets (bundled): $ASSET_MODEL_FILENAME")
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+        } catch (e: Exception) {
+            Log.d(TAG, "Model not in assets, trying internal storage...")
+        }
+        
+        // Fallback: Load from internal storage (downloaded model)
+        val modelFile = File(context.filesDir, MODEL_FILENAME)
+        if (!modelFile.exists()) {
+            throw IOException("Model file not found in assets or internal storage. Please download first.")
+        }
+        
         val inputStream = FileInputStream(modelFile)
         val fileChannel = inputStream.channel
         val startOffset = 0L
         val declaredLength = modelFile.length()
+        
+        Log.d(TAG, "💾 Loading model from internal storage: $MODEL_FILENAME (${declaredLength / 1024 / 1024}MB)")
         return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
     }
     

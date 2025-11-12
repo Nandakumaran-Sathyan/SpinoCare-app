@@ -197,8 +197,8 @@ fun ModelSettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            if (isModelAvailable) "Model Downloaded (Ready for offline use)" 
-                            else "Model Not Available",
+                            if (isModelAvailable) "Model Available (Offline analysis ready)" 
+                            else "Waiting for first update...",
                             fontSize = 14.sp,
                             color = com.example.modicanalyzer.ui.theme.TextPrimary
                         )
@@ -229,68 +229,63 @@ fun ModelSettingsScreen(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Download Model Button
-                    if (!isModelAvailable && !isDownloadingModel) {
-                        Button(
-                            onClick = {
+                    // Check for Updates Button (Manual trigger for auto-update)
+                    Button(
+                        onClick = {
+                            if (!isCheckingUpdates) {
                                 scope.launch {
-                                    isDownloadingModel = true
-                                    downloadProgress = 0
-                                    analyzer.downloadModelForOfflineUse(
-                                        onProgress = { progress ->
-                                            downloadProgress = progress
-                                        },
-                                        onComplete = { success ->
-                                            isDownloadingModel = false
-                                            isModelAvailable = success
-                                            if (success) {
-                                                modelUpdateInfo = analyzer.getModelUpdateInfo()
-                                            }
-                                        }
-                                    )
+                                    isCheckingUpdates = true
+                                    val hasUpdate = analyzer.checkForModelUpdates()
+                                    modelUpdateInfo = analyzer.getModelUpdateInfo()
+                                    isModelAvailable = analyzer.isLocalModelAvailable()
+                                    isCheckingUpdates = false
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = com.example.modicanalyzer.ui.theme.ModicarePrimary
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Download Model")
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = com.example.modicanalyzer.ui.theme.ModicareSecondary
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isCheckingUpdates
+                    ) {
+                        if (isCheckingUpdates) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Update, contentDescription = null)
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (isCheckingUpdates) "Checking..." else "Check for Updates Now")
                     }
                     
-                    // Check for Updates Button
-                    if (isModelAvailable) {
-                        Button(
-                            onClick = {
-                                if (!isCheckingUpdates) {
-                                    scope.launch {
-                                        isCheckingUpdates = true
-                                        analyzer.checkForModelUpdates()
-                                        modelUpdateInfo = analyzer.getModelUpdateInfo()
-                                        isCheckingUpdates = false
-                                    }
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = com.example.modicanalyzer.ui.theme.ModicareSecondary
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isCheckingUpdates
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Auto-update info message
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = com.example.modicanalyzer.ui.theme.ModicarePrimary.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (isCheckingUpdates) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(Icons.Default.Update, contentDescription = null)
-                            }
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = com.example.modicanalyzer.ui.theme.ModicarePrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isCheckingUpdates) "Checking..." else "Check for Updates")
+                            Text(
+                                "The app automatically checks for model updates every 6 hours when connected to the internet.",
+                                fontSize = 12.sp,
+                                color = com.example.modicanalyzer.ui.theme.TextSecondary,
+                                lineHeight = 16.sp
+                            )
                         }
                     }
                 }
