@@ -197,13 +197,44 @@ data class LoginRequest(
 )
 
 /**
- * Auth response (register or login)
+ * Register response (Step 1 - OTP sent)
+ */
+data class RegisterResponse(
+    @SerializedName("email") val email: String,
+    @SerializedName("message") val message: String,
+    @SerializedName("otp_expires_in_minutes") val otpExpiresInMinutes: Int,
+    @SerializedName("registration_data") val registrationData: RegistrationData
+)
+
+/**
+ * Registration data to be passed to OTP verification
+ */
+data class RegistrationData(
+    @SerializedName("email") val email: String,
+    @SerializedName("display_name") val displayName: String? = null,
+    @SerializedName("phone_number") val phoneNumber: String? = null,
+    @SerializedName("password_hash") val passwordHash: String
+)
+
+/**
+ * Verify email request (Step 2 - Complete registration)
+ */
+data class VerifyEmailRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("otp") val otp: String,
+    @SerializedName("password_hash") val passwordHash: String,
+    @SerializedName("display_name") val displayName: String? = null,
+    @SerializedName("phone_number") val phoneNumber: String? = null
+)
+
+/**
+ * Auth response (login or after OTP verification)
  */
 data class AuthResponse(
     @SerializedName("user_id") val userId: Int,
     @SerializedName("uid") val uid: String,
     @SerializedName("email") val email: String,
-    @SerializedName("display_name") val displayName: String,
+    @SerializedName("display_name") val displayName: String? = null,
     @SerializedName("phone_number") val phoneNumber: String? = null,
     @SerializedName("token") val token: String,
     @SerializedName("message") val message: String

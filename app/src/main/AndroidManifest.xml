@@ -54,6 +54,13 @@
             android:label="Sign Up"
             android:theme="@style/Theme.SpinoCare" />
         
+        <!-- OTP Verification Activity -->
+        <activity
+            android:name=".OTPVerificationActivity"
+            android:exported="false"
+            android:label="Verify Email"
+            android:theme="@style/Theme.SpinoCare" />
+        
         <!-- Main Activity -->
         <activity
             android:name=".SimpleMainActivity"

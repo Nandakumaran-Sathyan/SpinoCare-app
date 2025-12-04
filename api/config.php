@@ -10,6 +10,15 @@ define('DB_NAME', 'spinocare_db');
 define('DB_USER', 'root');  // Default XAMPP MySQL user
 define('DB_PASS', '');      // Default XAMPP MySQL password (empty)
 
+// Email / SMTP Configuration (Gmail)
+// IMPORTANT: Replace with your Gmail and App Password
+// Get App Password: https://myaccount.google.com/apppasswords
+define('SMTP_HOST', 'smtp.gmail.com');
+define('SMTP_PORT', 587);
+define('SMTP_SECURE', 'tls');
+define('SMTP_USERNAME', 'spinocareapp@gmail.com');  // Your Gmail
+define('SMTP_PASSWORD', 'hnsx rwuq yjfy lfks');      // 16-char password
+
 // Create database connection
 function getDBConnection() {
     try {

@@ -23,12 +23,12 @@ object NetworkModule {
      * For local development with XAMPP
      * 
      * IMPORTANT: Using WiFi IP address
-     * - Current: "http://192.168.0.101/spinocare-api/" (your laptop's WiFi IP)
+     * - Current: "http://192.168.29.203/spinocare-api/" (your laptop's WiFi IP)
      * - Make sure your phone and laptop are on the SAME WiFi network
      * - If connection fails, run: ipconfig to find current WiFi IP
      * - Update this IP if your WiFi IP changes
      */
-    private const val BASE_URL = "http://192.168.0.101/spinocare-api/"
+    private const val BASE_URL = "http://192.168.29.203/spinocare-api/"
     
     @Provides
     @Singleton

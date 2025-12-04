@@ -33,14 +33,15 @@ class MySQLAuthRepository @Inject constructor(
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     
     /**
-     * Register new user
+     * Register new user (Step 1 - Send OTP, DO NOT create user yet)
+     * Returns registration data to be passed to OTP verification
      */
     suspend fun register(
         email: String,
         password: String,
         displayName: String,
         phoneNumber: String? = null
-    ): Result<AuthResponse> {
+    ): Result<RegisterResponse> {
         return try {
             val request = RegisterRequest(
                 email = email,
@@ -54,9 +55,7 @@ class MySQLAuthRepository @Inject constructor(
             if (response.isSuccessful && response.body()?.success == true) {
                 val data = response.body()?.data
                 if (data != null) {
-                    // Save session
-                    saveSession(data)
-                    Log.d(TAG, "✅ User registered: ${data.email}")
+                    Log.d(TAG, "✅ OTP sent to: ${data.email}")
                     Result.success(data)
                 } else {
                     Result.failure(Exception("No data in response"))
@@ -68,6 +67,48 @@ class MySQLAuthRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Registration error", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Verify email with OTP (Step 2 - Complete registration and create user)
+     */
+    suspend fun verifyEmail(
+        email: String,
+        otp: String,
+        passwordHash: String,
+        displayName: String? = null,
+        phoneNumber: String? = null
+    ): Result<AuthResponse> {
+        return try {
+            val request = VerifyEmailRequest(
+                email = email,
+                otp = otp,
+                passwordHash = passwordHash,
+                displayName = displayName,
+                phoneNumber = phoneNumber
+            )
+            
+            val response = apiService.verifyEmail(request = request)
+            
+            if (response.isSuccessful && response.body()?.success == true) {
+                val data = response.body()?.data
+                if (data != null) {
+                    // Save session
+                    saveSession(data)
+                    Log.d(TAG, "✅ Email verified and user created: ${data.email}")
+                    Result.success(data)
+                } else {
+                    Result.failure(Exception("No data in response"))
+                }
+            } else {
+                val error = response.body()?.error ?: "Verification failed"
+                Log.e(TAG, "❌ Verification failed: $error")
+                Result.failure(Exception(error))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Verification error", e)
             Result.failure(e)
         }
     }

@@ -125,20 +125,25 @@ class SignupActivity : ComponentActivity() {
                     phoneNumber = phone.takeIf { it.isNotBlank() }
                 )
                 
-                result.onSuccess { authResponse ->
-                    android.util.Log.d(TAG, "✅ Registration successful: ${authResponse.email}")
-                    android.util.Log.d(TAG, "User UID: ${authResponse.uid}")
+                result.onSuccess { registerResponse ->
+                    android.util.Log.d(TAG, "✅ OTP sent to: ${registerResponse.email}")
                     
                     Toast.makeText(
                         this@SignupActivity,
-                        "✅ Account created successfully!",
+                        "✅ Verification code sent! Check your email.",
                         Toast.LENGTH_SHORT
                     ).show()
                     
                     onComplete() // Reset loading state
                     
-                    // Navigate to main activity
-                    startActivity(Intent(this@SignupActivity, SimpleMainActivity::class.java))
+                    // Navigate to OTP verification screen
+                    val intent = Intent(this@SignupActivity, OTPVerificationActivity::class.java).apply {
+                        putExtra(OTPVerificationActivity.EXTRA_EMAIL, registerResponse.email)
+                        putExtra(OTPVerificationActivity.EXTRA_PASSWORD_HASH, registerResponse.registrationData.passwordHash)
+                        putExtra(OTPVerificationActivity.EXTRA_DISPLAY_NAME, registerResponse.registrationData.displayName)
+                        putExtra(OTPVerificationActivity.EXTRA_PHONE_NUMBER, registerResponse.registrationData.phoneNumber)
+                    }
+                    startActivity(intent)
                     finish()
                     
                 }.onFailure { e ->

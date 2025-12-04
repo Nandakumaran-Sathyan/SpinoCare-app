@@ -40,8 +40,19 @@ if ($method === 'OPTIONS') {
 }
 
 try {
+    // OTP endpoints
+    if (isset($segments[0]) && $segments[0] === 'otp') {
+        require_once 'email.php';
+        if (isset($segments[1]) && $segments[1] === 'send' && $method === 'POST') {
+            handleSendOTP();
+        } else if (isset($segments[1]) && $segments[1] === 'verify' && $method === 'POST') {
+            handleVerifyOTP();
+        } else {
+            sendResponse(false, null, 'Invalid OTP endpoint', 404);
+        }
+    }
     // Authentication endpoints
-    if (isset($segments[0]) && $segments[0] === 'auth') {
+    else if (isset($segments[0]) && $segments[0] === 'auth') {
         require_once 'auth.php';
         handleAuthRequest($method, $segments);
     }
@@ -66,8 +77,15 @@ try {
             'message' => 'SpinoCare API is running',
             'version' => '2.0',
             'endpoints' => [
-                'POST /spinocare-api/auth/register - Register new user with password',
+                '=== REGISTRATION FLOW ===',
+                'POST /spinocare-api/auth/register - Step 1: Register & send OTP',
+                'POST /spinocare-api/auth/verify-email - Step 2: Verify OTP & complete registration',
+                '=== AUTHENTICATION ===',
                 'POST /spinocare-api/auth/login - Login with email and password',
+                '=== OTP (Standalone) ===',
+                'POST /spinocare-api/otp/send - Send OTP to email',
+                'POST /spinocare-api/otp/verify - Verify OTP code',
+                '=== OTHER ===',
                 'GET /spinocare-api/firebase/token - Get Firebase custom token (requires auth)',
                 'POST /spinocare-api/users/register - Legacy: Register user (no password)',
                 'GET /spinocare-api/users/{uid} - Get user details',

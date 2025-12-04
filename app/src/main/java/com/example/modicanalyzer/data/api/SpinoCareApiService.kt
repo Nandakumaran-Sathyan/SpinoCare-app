@@ -14,17 +14,27 @@ interface SpinoCareApiService {
     // ============================================
     
     /**
-     * Register new user with password
+     * Register new user with password (Step 1 - Send OTP)
      * POST /auth/register
      */
     @POST("index.php")
     suspend fun register(
         @Query("path") path: String = "auth/register",
         @Body request: RegisterRequest
+    ): Response<ApiResponse<RegisterResponse>>
+    
+    /**
+     * Verify email with OTP (Step 2 - Complete registration)
+     * POST /auth/verify-email
+     */
+    @POST("index.php")
+    suspend fun verifyEmail(
+        @Query("path") path: String = "auth/verify-email",
+        @Body request: VerifyEmailRequest
     ): Response<ApiResponse<AuthResponse>>
     
     /**
-     * Login with email and password
+     * Login with email and password (verified users only)
      * POST /auth/login
      */
     @POST("index.php")
