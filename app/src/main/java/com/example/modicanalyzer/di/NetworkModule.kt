@@ -20,13 +20,17 @@ object NetworkModule {
     
     /**
      * Base URL for the API
-     * For local development with XAMPP
      * 
-     * IMPORTANT: Using WiFi IP address
+     * DEVELOPMENT (Local XAMPP Testing):
      * - Current: "http://192.168.29.203/spinocare-api/" (your laptop's WiFi IP)
      * - Make sure your phone and laptop are on the SAME WiFi network
      * - If connection fails, run: ipconfig to find current WiFi IP
-     * - Update this IP if your WiFi IP changes
+     * - Backend files located in: backend-deploy/php-api/ (copy to C:\xampp-2\htdocs\spinocare-api\)
+     * 
+     * PRODUCTION (After Deployment):
+     * - Change to: "https://yourdomain.com/spinocare-api/"
+     * - Follow deployment guide: backend-deploy/README.md
+     * - Update this URL after deploying backend
      */
     private const val BASE_URL = "http://192.168.29.203/spinocare-api/"
     

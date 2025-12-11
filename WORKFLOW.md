@@ -68,11 +68,19 @@
 - `RemoteModelAnalyzer` - Server-based inference
 - `ModelUpdateManager` - Automatic update handling
 
-#### **Backend (Python/FastAPI)**
+#### **Backend (Python/FastAPI)** - Located in `backend-deploy/python-ml-server/`
 - `main.py` - FastAPI server with endpoints
 - `modic_model.tflite` - Global TFLite model
 - Federated learning aggregation
 - Model versioning and distribution
+
+#### **Backend (PHP REST API)** - Located in `backend-deploy/php-api/`
+- `auth.php` - User authentication with OTP email verification
+- `email.php` - PHPMailer integration for OTP emails
+- `users.php` - User management endpoints
+- `analysis.php` - MRI analysis data storage
+- `config.php` - Database configuration
+- MySQL database schema in `backend-deploy/database/`
 
 ---
 

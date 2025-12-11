@@ -46,7 +46,15 @@ Run this in phpMyAdmin:
 DELETE FROM users WHERE email_verified = FALSE OR email_verified = 0;
 ```
 
-### 2. Copy Updated Files
+### 2. Backend Files Location
+All backend files are now organized in the `backend-deploy/` folder:
+- **PHP API**: `backend-deploy/php-api/`
+- **Python ML Server**: `backend-deploy/python-ml-server/`
+- **Database Scripts**: `backend-deploy/database/`
+
+Refer to `backend-deploy/README.md` for complete deployment instructions.
+
+### 3. Testing the OTP Flow
 ```powershell
 Copy-Item "api\auth.php" "C:\xampp-2\htdocs\spinocare-api\auth.php" -Force
 ```

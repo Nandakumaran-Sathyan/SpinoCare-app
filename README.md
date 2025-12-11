@@ -43,6 +43,12 @@ app/
 │   │   ├── SettingsActivity.kt        # User settings for inference mode
 │   │   └── ImageUtils.kt              # Image processing utilities
 │   └── AndroidManifest.xml            # App permissions and configuration
+
+backend-deploy/                         # 📦 Complete backend deployment package
+├── php-api/                            # PHP REST API (authentication, data storage)
+├── python-ml-server/                   # Python Flask ML server (federated learning)
+├── database/                           # SQL schemas and migrations
+└── README.md                           # Full deployment guide
 ```
 
 ## Model Requirements
